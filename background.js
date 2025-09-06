@@ -1,67 +1,86 @@
-// 初始化时恢复代理状态
-chrome.runtime.onStartup.addListener(restoreProxyState);
-chrome.runtime.onInstalled.addListener(restoreProxyState);
+// background.js - Manages proxy settings and icon state.
 
-async function restoreProxyState() {
-  const settings = await chrome.storage.sync.get({
-    host: '127.0.0.1',
-    port: 1080,
-    enabled: false
-  });
-  
-  if (settings.enabled) {
-    setProxy(settings.host, settings.port);
-    updateIcon(true);
-  } else {
-    clearProxy();
-    updateIcon(false);
+// Helper function to generate the PAC script based on stored settings.
+async function generatePacScript() {
+  const {
+    proxyEnabled,
+    proxyHost,
+    proxyPort,
+    bypassDomains,
+    forceProxyDomains,
+    gfwlistData,
+  } = await chrome.storage.local.get([
+    "proxyEnabled",
+    "proxyHost",
+    "proxyPort",
+    "bypassDomains",
+    "forceProxyDomains",
+    "gfwlistData",
+  ]);
+
+  if (!proxyEnabled || !proxyHost || !proxyPort) {
+    return `
+      function FindProxyForURL(url, host) {
+        return "DIRECT";
+      }
+    `;
   }
+
+  // Combine custom force domains and gfwlist domains.
+  const proxyDomains = new Set([...(forceProxyDomains || []), ...(gfwlistData || [])]);
+  const bypassSet = new Set(bypassDomains || []);
+
+  const pacScript = `
+    function FindProxyForURL(url, host) {
+      // Check for bypass domains first
+      if (${JSON.stringify(Array.from(bypassSet))}.some(domain => host.includes(domain))) {
+        return "DIRECT";
+      }
+      
+      // Check for proxy domains
+      if (${JSON.stringify(Array.from(proxyDomains))}.some(domain => host.includes(domain))) {
+        return "SOCKS5 ${proxyHost}:${proxyPort}";
+      }
+
+      // Default to DIRECT for all other domains
+      return "DIRECT";
+    }
+  `;
+
+  return pacScript;
 }
 
-// 监听来自popup的消息
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'toggleProxy') {
-    if (message.enabled) {
-      setProxy(message.host, message.port);
-      updateIcon(true);
-    } else {
-      clearProxy();
-      updateIcon(false);
-    }
+// Function to apply the proxy settings.
+async function applyProxySettings() {
+  const { proxyEnabled } = await chrome.storage.local.get("proxyEnabled");
+  let config;
+  if (proxyEnabled) {
+    const pacScript = await generatePacScript();
+    config = {
+      mode: "pac_script",
+      pacScript: { data: pacScript },
+    };
+    await chrome.action.setIcon({ path: "icons/icon-on.png" });
+  } else {
+    config = { mode: "direct" };
+    await chrome.action.setIcon({ path: "icons/icon-off.png" });
   }
-});
-
-function setProxy(host, port) {
-  const config = {
-    mode: "fixed_servers",
-    rules: {
-      singleProxy: {
-        scheme: "socks5",
-        host: host,
-        port: port
+  
+  chrome.proxy.settings.set(
+    { value: config, scope: "regular" },
+    () => {
+      if (chrome.runtime.lastError) {
+        console.error("Proxy setting failed:", chrome.runtime.lastError.message);
+      } else {
+        console.log("Proxy settings applied successfully.");
       }
     }
-  };
-  
-  chrome.proxy.settings.set({
-    value: config,
-    scope: 'regular'
-  });
+  );
 }
 
-function clearProxy() {
-  chrome.proxy.settings.clear({
-    scope: 'regular'
-  });
-}
+// Listen for changes in storage and apply settings.
+chrome.storage.onChanged.addListener(applyProxySettings);
 
-function updateIcon(enabled) {
-  const iconPath = enabled ? 'icons/icon-on.png' : 'icons/icon-off.png';
-  chrome.action.setIcon({
-    path: {
-      16: iconPath,
-      48: iconPath,
-      128: iconPath
-    }
-  });
-}
+// Apply settings on startup.
+chrome.runtime.onStartup.addListener(applyProxySettings);
+chrome.runtime.onInstalled.addListener(applyProxySettings);
