@@ -60,6 +60,31 @@ async function saveSettings(key, value, isLocal = true) {
   await storage.set({ [key]: value });
 }
 
+
+function parseGfwlist(text) {
+  const domains = new Set();
+  const white = new Set();
+  const decoded = atob(text);
+  for (let line of decoded.split('\n')) {
+    line = line.trim();
+    if (!line || line.startsWith('!')) continue;
+    let raw = line;
+    if (raw.startsWith('@@')) {
+      raw = raw.slice(2);
+    }
+    let host = raw
+      .replace(/^\|?https?:\/\//, '')
+      .replace(/^[\|\^]*/, '')
+      .replace(/[\/\*\|].*$/, '');
+    if (/^([\w\-]+\.)+\w+$/.test(host)) {
+      (line.startsWith('@@') ? white : domains).add(host);
+    }
+  }
+  for (const h of white) domains.delete(h);
+  return Array.from(domains);
+}
+
+
 // Handle proxy toggle.
 proxyToggle.addEventListener("change", (event) => {
   saveSettings("proxyEnabled", event.target.checked);
@@ -92,8 +117,7 @@ downloadGfwlistBtn.addEventListener("click", async () => {
     if (!response.ok) throw new Error("Network response was not ok.");
     
     const text = await response.text();
-    const decodedText = atob(text.split("\n").filter(line => line.length > 0 && !line.startsWith("!")).join(""));
-    const domains = decodedText.split(/\r?\n/).filter(line => line.length > 0);
+    const domains = parseGfwlist(text)
     
     await saveSettings("gfwlistData", domains);
     statusMessage.textContent = `GFWList downloaded with ${domains.length} entries!`;
