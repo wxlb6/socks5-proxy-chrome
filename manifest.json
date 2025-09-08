@@ -6,8 +6,7 @@
     "permissions": [
         "proxy",
         "storage",
-        "unlimitedStorage",
-        "downloads"
+        "unlimitedStorage"
     ],
     "host_permissions": [
         "<all_urls>"
