@@ -1,5 +1,4 @@
 # Simple Socks5 Proxy Plugin For Google Chrome
 
 
-<img width="632" height="1314" alt="image" src="https://github.com/user-attachments/assets/60b72189-f202-4385-bd23-21596bd5fb0a" />
-
+<img width="642" height="1304" alt="image" src="https://github.com/user-attachments/assets/dac3c7ab-2617-4890-9772-00f9f44c80f8" />
