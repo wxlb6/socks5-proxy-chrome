@@ -3,9 +3,9 @@
 const hostInput = document.getElementById("host-input");
 const portInput = document.getElementById("port-input");
 const proxyToggle = document.getElementById("proxy-toggle");
-const gfwlistUrlInput = document.getElementById("gfwlist-url-input");
-const downloadGfwlistBtn = document.getElementById("download-gfwlist-btn");
-const clearGfwlistBtn = document.getElementById("clear-gfwlist-btn");
+const autoproxyUrlInput = document.getElementById("autoproxy-url-input");
+const downloadAutoProxyBtn = document.getElementById("download-autoproxy-btn");
+const clearAutoProxyBtn = document.getElementById("clear-autoproxy-btn");
 const forceProxyDomainInput = document.getElementById("force-proxy-domain-input");
 const addForceProxyDomainBtn = document.getElementById("add-force-proxy-domain-btn");
 const forceProxyDomainList = document.getElementById("force-proxy-domain-list");
@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     proxyEnabled,
     proxyHost,
     proxyPort,
-    gfwlistUrl,
+    autoproxyUrl,
     bypassDomains,
     forceProxyDomains,
   } = await chrome.storage.local.get([
@@ -28,8 +28,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     "proxyHost",
     "proxyPort",
   ]);
-  const { syncGfwlistUrl, syncBypassDomains, syncForceProxyDomains } = await chrome.storage.sync.get([
-    "syncGfwlistUrl",
+  const { syncAutoProxyUrl, syncBypassDomains, syncForceProxyDomains } = await chrome.storage.sync.get([
+    "syncAutoProxyUrl",
     "syncBypassDomains",
     "syncForceProxyDomains",
   ]);
@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (proxyEnabled !== undefined) proxyToggle.checked = proxyEnabled;
   if (proxyHost) hostInput.value = proxyHost;
   if (proxyPort) portInput.value = proxyPort;
-  if (syncGfwlistUrl) gfwlistUrlInput.value = syncGfwlistUrl;
+  if (syncAutoProxyUrl) autoproxyUrlInput.value = syncAutoProxyUrl;
 
   updateDomainList(bypassDomainList, bypassDomains || syncBypassDomains || []);
   updateDomainList(forceProxyDomainList, forceProxyDomains || syncForceProxyDomains || []);
@@ -61,7 +61,7 @@ async function saveSettings(key, value, isLocal = true) {
 }
 
 
-function parseGfwlist(text) {
+function parseAutoProxy(text) {
   const domains = new Set();
   const white = new Set();
   const decoded = atob(text);
@@ -99,43 +99,43 @@ portInput.addEventListener("blur", (event) => {
   saveSettings("proxyPort", parseInt(event.target.value, 10));
 });
 
-// Handle GFWList URL and download.
-gfwlistUrlInput.addEventListener("blur", (event) => {
-  saveSettings("syncGfwlistUrl", event.target.value, false);
+// Handle AutoProxy URL and download.
+autoproxyUrlInput.addEventListener("blur", (event) => {
+  saveSettings("syncAutoProxyUrl", event.target.value, false);
 });
 
-downloadGfwlistBtn.addEventListener("click", async () => {
-  const url = gfwlistUrlInput.value;
+downloadAutoProxyBtn.addEventListener("click", async () => {
+  const url = autoproxyUrlInput.value;
   if (!url) {
-    statusMessage.textContent = "Please enter a GFWList URL.";
+    statusMessage.textContent = "Please enter a AutoProxy URL.";
     return;
   }
   
-  statusMessage.textContent = "Downloading GFWList...";
+  statusMessage.textContent = "Downloading AutoProxy...";
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error("Network response was not ok.");
     
     const text = await response.text();
-    const domains = parseGfwlist(text)
+    const domains = parseAutoProxy(text)
     
-    await saveSettings("gfwlistData", domains);
-    statusMessage.textContent = `GFWList downloaded with ${domains.length} entries!`;
+    await saveSettings("autoproxyData", domains);
+    statusMessage.textContent = `AutoProxy downloaded with ${domains.length} entries!`;
 
   } catch (error) {
-    statusMessage.textContent = "Failed to download GFWList: " + error.message;
-    console.error("Error downloading GFWList:", error);
+    statusMessage.textContent = "Failed to download AutoProxy: " + error.message;
+    console.error("Error downloading AutoProxy:", error);
   }
 });
 
-// Add new handler to clear gfwlist data
-clearGfwlistBtn.addEventListener("click", async () => {
+// Add new handler to clear autoproxy data
+clearAutoProxyBtn.addEventListener("click", async () => {
     try {
-        await chrome.storage.local.remove("gfwlistData");
-        statusMessage.textContent = "GFWList data has been cleared!";
+        await chrome.storage.local.remove("autoproxyData");
+        statusMessage.textContent = "AutoProxy data has been cleared!";
     } catch (error) {
-        statusMessage.textContent = "Failed to clear GFWList data.";
-        console.error("Error clearing GFWList data:", error);
+        statusMessage.textContent = "Failed to clear AutoProxy data.";
+        console.error("Error clearing AutoProxy data:", error);
     }
 });
 

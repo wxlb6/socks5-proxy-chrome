@@ -8,14 +8,14 @@ async function generatePacScript() {
     proxyPort,
     bypassDomains,
     forceProxyDomains,
-    gfwlistData,
+    autoproxyData,
   } = await chrome.storage.local.get([
     "proxyEnabled",
     "proxyHost",
     "proxyPort",
     "bypassDomains",
     "forceProxyDomains",
-    "gfwlistData",
+    "autoproxyData",
   ]);
 
   if (!proxyEnabled || !proxyHost || !proxyPort) {
@@ -26,8 +26,8 @@ async function generatePacScript() {
     `;
   }
 
-  // Combine custom force domains and gfwlist domains.
-  const proxyDomains = new Set([...(forceProxyDomains || []), ...(gfwlistData || [])]);
+  // Combine custom force domains and autoproxy domains.
+  const proxyDomains = new Set([...(forceProxyDomains || []), ...(autoproxyData || [])]);
   const bypassSet = new Set(bypassDomains || []);
 
   const pacScript = `
